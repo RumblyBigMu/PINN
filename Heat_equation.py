@@ -211,7 +211,8 @@ def plot_solution(analytic_solution, net_solution, x_eval, t_eval, flag=False):
         ax.plot_surface(x_axis, t_axis, analytic_solution)
         ax.plot_surface(x_axis, t_axis, net_solution)
     else:
-        ax.plot_surface(x_axis, t_axis, error)
+        err = error(analytic_solution, net_solution)
+        ax.plot_surface(x_axis, t_axis, err)
     ax.set_xlabel('x')
     ax.set_ylabel('t')
     ax.set_zlabel('u')
@@ -222,14 +223,15 @@ def plot_solution(analytic_solution, net_solution, x_eval, t_eval, flag=False):
 def error(analytic_solution, net_solution):
     error = np.fabs(analytic_solution - net_solution)
     print(f"Error: {np.max(error)}")
+    return error
 
 
 if __name__ == "__main__":
     T = 1.
     x_interval = [0.0, 1.]
-    N_x = 100
+    N_x = 10
     t_interval = [0.0, T]
-    N_t = 100
+    N_t = 10
 
     x_raw = torch.linspace(x_interval[0], x_interval[1], steps=N_x, requires_grad=True)
     t_raw = torch.linspace(t_interval[0], t_interval[1], steps=N_t, requires_grad=True)
@@ -239,11 +241,11 @@ if __name__ == "__main__":
     t = grids[1].flatten().reshape(-1, 1)
 
     # Инициализация нейронной сети
-    net = Net(3, 20)
+    net = Net(4, 15)
     print("Архитектура сети: \n", net, end='\n\n')
     # Тренировка нейронной сети
     loss_function = partial(compute_loss, x=x, t=t)
-    net_trained, loss_evolution = train_model(net, loss_function=loss_function, learning_rate=0.001, max_epochs=50000)
+    net_trained, loss_evolution = train_model(net, loss_function=loss_function, learning_rate=0.01, max_epochs=5000)
 
     x_eval = torch.linspace(x_interval[0], x_interval[1], steps=N_x).reshape(-1, 1)
     t_eval = torch.linspace(t_interval[0], t_interval[1], steps=N_t).reshape(-1, 1)
@@ -284,10 +286,17 @@ if __name__ == "__main__":
                 U[j][i] = f(net_trained, torch.tensor(i * h).reshape(-1, 1), torch.tensor(j * tau).reshape(-1, 1))
         return U
 
+
     # Аналитическое решение
     analytic_solution = analyticSolution(T, N_x - 1, N_t - 1)
+    print("Analytic done!")
     # Решение, полученное тренировкой сети
     net_solution = netSolution(T, N_x - 1, N_t - 1)
+    print("Net done!")
 
-    error(analytic_solution, net_solution)
-    plot_solution(analytic_solution, net_solution, x_eval, t_eval, flag=False)
+    error_flag = True
+    if error_flag:
+        error(analytic_solution, net_solution)
+        plot_solution(analytic_solution, net_solution, x_eval, t_eval, flag=error_flag)
+    else:
+        plot_solution(analytic_solution, net_solution, x_eval, t_eval, flag=error_flag)
